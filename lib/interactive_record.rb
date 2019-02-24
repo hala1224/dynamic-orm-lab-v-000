@@ -33,5 +33,41 @@ class InteractiveRecord
         self.class.column_names.delete_if {|col_name| col_name == "id"}.join (", ")
     end
     
+     def values_for_insert
+        values = []
+        self.class.column_names.each do |col_name|
+            values << "'#{send(col_name)}'" unless send(col_name).nil?
+        end
+        values.join(", ")
+    end
+
+    def save
+        sql = "INSERT INTO #{self.table_name_for_insert} (#{self.col_names_for_insert}) VALUES (#{self.values_for_insert})"
+        DB[:conn].execute(sql)
+        
+        @id = DB[:conn].execute("SELECT last_insert_rowid() FROM #{self.table_name_for_insert}")[0][0]
+    end
     
+    def self.find_by_name(name)
+        sql = <<-SQL
+            SELECT * 
+            FROM #{self.table_name}
+            WHERE name = ?
+            SQL
+        
+        DB[:conn].execute(sql, name)
+    end
+
+    def self.find_by(attributes)
+       values = attributes.map {|key, value| "#{key} = '#{value}'"}.join("")
+       
+       sql = <<-SQL
+       SELECT * 
+       FROM #{self.table_name}
+       WHERE #{values}
+       SQL
+
+       DB[:conn].execute(sql)
+    end 
+
 end
